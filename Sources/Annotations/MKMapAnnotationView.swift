@@ -15,58 +15,41 @@ class MKMapAnnotationView<Content: View>: MKAnnotationView {
     // MARK: Stored Properties
 
     private var controller: NativeHostingController<Content>?
-
-    // MARK: Computed Properties
-
-    override var intrinsicContentSize: CGSize {
-        controller?.view.intrinsicContentSize
-            ?? .init(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
-    }
-
-    private var intrinsicContentFrame: CGRect {
-        let size = intrinsicContentSize
-        return CGRect(origin: .init(x: -size.width / 2, y: -size.height / 2), size: size)
-    }
+    private var selectedContent: Content?
+    private var notSelectedContent: Content?
+    private var viewMapAnnotation: ViewMapAnnotation<Content>?
 
     // MARK: Methods
 
     func setup(for mapAnnotation: ViewMapAnnotation<Content>) {
         annotation = mapAnnotation.annotation
-        clusteringIdentifier = mapAnnotation.clusteringIdentifier
-        
-        #if canImport(UIKit)
-        backgroundColor = .clear
-        #endif
+        self.viewMapAnnotation = mapAnnotation
+        updateContent(for: self.isSelected)
+    }
 
-        let controller = NativeHostingController(rootView: mapAnnotation.content, ignoreSafeArea: true)
-
-        #if canImport(UIKit)
-        controller.view.backgroundColor = .clear
-        #endif
-
-        addSubview(controller.view)
-        
-        controller.view.translatesAutoresizingMaskIntoConstraints = false
-        let constraints = [
-            topAnchor.constraint(equalTo: controller.view.topAnchor),
-            leftAnchor.constraint(equalTo: controller.view.leftAnchor),
-            rightAnchor.constraint(equalTo: controller.view.rightAnchor),
-            bottomAnchor.constraint(equalTo: controller.view.bottomAnchor)
-        ]
-        NSLayoutConstraint.activate(constraints)
-        
-        self.controller = controller
-        self.invalidateIntrinsicContentSize()
-        
-        if let anchor = mapAnnotation.anchorPoint {
-            centerOffset = CGPoint(
-                x: (anchor.x - 0.5) * intrinsicContentFrame.width,
-                y: (anchor.y - 0.5) * intrinsicContentFrame.height
-            )
+    private func updateContent(for selectedState: Bool) {
+        guard let contentView = selectedState ? viewMapAnnotation?.selectedContent : viewMapAnnotation?.content else {
+            return
         }
+        controller?.view.removeFromSuperview()
+        let controller = NativeHostingController(rootView: contentView)
+        addSubview(controller.view)
+        bounds.size = controller.preferredContentSize
+        self.controller = controller
     }
 
     // MARK: Overrides
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        updateContent(for: selected)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        if let controller = controller {
+            bounds.size = controller.preferredContentSize
+        }
+    }
 
     override func prepareForReuse() {
         super.prepareForReuse()
@@ -78,34 +61,6 @@ class MKMapAnnotationView<Content: View>: MKAnnotationView {
         controller?.removeFromParent()
         controller = nil
     }
-
-    #if canImport(UIKit)
-
-    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        return intrinsicContentFrame.contains(point)
-    }
-
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        controller?.view.frame = intrinsicContentFrame
-        return controller?.view.hitTest(point, with: event) ?? super.hitTest(point, with: event)
-    }
-
-    #elseif canImport(AppKit)
-
-    override func isMousePoint(_ point: NSPoint, in rect: NSRect) -> Bool {
-        rect.contains(point)
-    }
-    
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        controller?.view.frame = intrinsicContentFrame
-        guard let view = controller?.view.hitTest(point) ?? super.hitTest(point) else {
-            return nil
-        }
-        return view
-    }
-
-    #endif
-
 }
 
 #endif

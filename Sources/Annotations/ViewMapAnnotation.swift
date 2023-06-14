@@ -44,6 +44,7 @@ public struct ViewMapAnnotation<Content: View>: MapAnnotation {
     let clusteringIdentifier: String?
     let anchorPoint: CGPoint?
     let content: Content
+    let selectedContent: Content
 
     // MARK: Initialization
 
@@ -53,24 +54,28 @@ public struct ViewMapAnnotation<Content: View>: MapAnnotation {
         title: String? = nil,
         subtitle: String? = nil,
         clusteringIdentifier: String? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder selectedContent: () -> Content? = { nil }
     ) {
         self.annotation = Annotation(coordinate: coordinate, title: title, subtitle: subtitle)
         self.anchorPoint = anchorPoint
         self.clusteringIdentifier = clusteringIdentifier
         self.content = content()
+        self.selectedContent = selectedContent() ?? content()
     }
 
     public init(
         annotation: MKAnnotation,
         anchorPoint: CGPoint = .init(x: 0.5, y: 0.5),
         clusteringIdentifier: String? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder selectedContent: () -> Content? = { nil }
     ) {
         self.annotation = annotation
         self.anchorPoint = anchorPoint
         self.clusteringIdentifier = clusteringIdentifier
         self.content = content()
+        self.selectedContent = selectedContent() ?? content()
     }
 
     // MARK: Methods
